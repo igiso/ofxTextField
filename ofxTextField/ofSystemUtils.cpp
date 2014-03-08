@@ -1508,7 +1508,7 @@ void ofTextField::clearText(string dtext){
 
 
 ///this is the weird part of the code
-//since this textbox is drawed above openGL
+//since this textbox is drawing above openGL
 //you might want to use this function to figure out
 //how to hide it when you don't want it.
 void ofTextField::hideIfNotDrawing(){
