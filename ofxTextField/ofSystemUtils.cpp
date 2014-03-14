@@ -4,6 +4,7 @@
 #include "ofFileUtils.h"
 #include "ofLog.h"
 #include "ofUtils.h"
+#include "ofAppRunner.h"
 
 #ifdef TARGET_WIN32
 #include <winuser.h>
@@ -19,23 +20,18 @@
 
 #ifdef TARGET_OSX
 	// ofSystemUtils.cpp is configured to build as
-	// objective-c++ so as able to use NSAutoreleasePool.
+	// objective-c++ so as able to use Cocoa dialog panels
 	// This is done with this compiler flag
 	//		-x objective-c++
 	// http://www.yakyak.org/viewtopic.php?p=1475838&sid=1e9dcb5c9fd652a6695ac00c5e957822#p1475838
 
-	#include <Carbon/Carbon.h>
-	#include <sys/param.h> // for MAXPATHLEN
-	#include <Cocoa/Cocoa.h>  // for NSAutoreleasePool
+	#include <Cocoa/Cocoa.h>
 #endif
 
 #ifdef TARGET_WIN32
 #include <locale>
 #include <sstream>
 #include <string>
-
-
-
 
 std::string convertWideToNarrow( const wchar_t *s, char dfault = '?',
                       const std::locale& loc = std::locale() )
@@ -65,27 +61,31 @@ std::wstring convertNarrowToWide( const std::string& as ){
     return ret;
 }
 
+#endif
 
+#if defined( TARGET_OSX )
+static void restoreAppWindowFocus(){
+	NSWindow * appWindow = (NSWindow *)ofGetCocoaWindow();
+	if(appWindow) {
+		[appWindow makeKeyAndOrderFront:nil];
+	}
+}
 #endif
 
 #if defined( TARGET_LINUX ) && defined (OF_USING_GTK)
 #include <gtk/gtk.h>
-static gboolean closeGTK(GtkWidget *widget){
-	//gtk_widget_destroy(widget);
-    gtk_main_quit();
-    return (FALSE);
-}
+#include "ofGstUtils.h"
 
 static void initGTK(){
+	static bool initialized = false;
+	if(!initialized){
+		ofGstUtils::startGstMainLoop();
+	    gdk_threads_init();
 	int argc=0; char **argv = NULL;
 	gtk_init (&argc, &argv);
+		initialized = true;
+	}
 
-}
-static void startGTK(GtkWidget *dialog){
-	gtk_init_add( (GSourceFunc) closeGTK, NULL );
-	gtk_quit_add_destroy(1,GTK_OBJECT(dialog));
-	//g_timeout_add(10, (GSourceFunc) destroyWidgetGTK, (gpointer) dialog);
-	gtk_main();
 }
 
 static string gtkFileDialog(GtkFileChooserAction action,string windowTitle,string defaultName=""){
@@ -117,10 +117,14 @@ static string gtkFileDialog(GtkFileChooserAction action,string windowTitle,strin
 
 	gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(dialog),defaultName.c_str());
 
+	gdk_threads_enter();
 	if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_ACCEPT) {
 		results = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (dialog));
 	}
-	startGTK(dialog);
+	gtk_widget_destroy (dialog);
+	gdk_threads_leave();
+	//gtk_dialog_run(GTK_DIALOG(dialog));
+	//startGTK(dialog);
 	return results;
 }
 
@@ -147,81 +151,6 @@ string ofFileDialogResult::getPath(){
 }
 
 
-
-//------------------------------------------------------------------------------
-bool ofSystemYes_NoDialoge(string errorMessage,string message){
-    
-    
-#ifdef TARGET_WIN32
-    // we need to convert error message to a wide char message.
-    // first, figure out the length and allocate a wchar_t at that length + 1 (the +1 is for a terminating character)
-    int length = strlen(errorMessage.c_str());
-    wchar_t * widearray = new wchar_t[length+1];
-    memset(widearray, 0, sizeof(wchar_t)*(length+1));
-    // then, call mbstowcs:
-    // http://www.cplusplus.com/reference/clibrary/cstdlib/mbstowcs/
-    mbstowcs(widearray, errorMessage.c_str(), length);
-    // launch the alert:
-    MessageBoxW(NULL, widearray, L"alert", MB_OK);
-    // clear the allocated memory:
-    
-    
-    delete widearray;
-#endif
-    
-    
-#ifdef TARGET_OSX
-    
-	NSAlert *alert = [[[NSAlert alloc] init] autorelease];
-	[alert addButtonWithTitle:@"OK"];
-	[alert addButtonWithTitle:@"Cancel"];
-	[alert setMessageText:[NSString stringWithCString:errorMessage.c_str()
-											 encoding:NSUTF8StringEncoding]];
-	// create text field
-    int height =50;
-    if(message.size()>100){
-        height = message.size()/2;
-    }
-    
-	NSTextField* label = [[NSTextField alloc] initWithFrame:NSRectFromCGRect(CGRectMake(0,0,300,height))];
-    [label setBordered:false];
-    [label setEditable:false];
-    [label setBezeled:false];
-    
-
-    
-    [label setBackgroundColor:[NSColor clearColor]];
-	[label setStringValue:[NSString stringWithCString:message.c_str()
-											 encoding:NSUTF8StringEncoding]];
-	// add text field to alert dialog
-	[alert setAccessoryView:label];
-	NSInteger returnCode = [alert runModal];
-	// if OK was clicked, assign value to text
-    bool result = false;
-	if (returnCode == NSAlertFirstButtonReturn)result = true; else result = false;
-    
-    
-    
-    return result;
-    
-    
-#endif
-    
-#if defined( TARGET_LINUX ) && defined (OF_USING_GTK)
-    initGTK();
-    GtkWidget* dialog = gtk_message_dialog_new (NULL, (GtkDialogFlags) 0, GTK_MESSAGE_INFO, GTK_BUTTONS_OK, "%s", errorMessage.c_str());
-    gtk_dialog_run (GTK_DIALOG (dialog));
-    startGTK(dialog);
-#endif
-    
-#ifdef TARGET_ANDROID
-    ofxAndroidAlertBox(errorMessage);
-#endif
-}
-
-
-
-
 //------------------------------------------------------------------------------
 void ofSystemAlertDialog(string errorMessage){
 
@@ -243,126 +172,31 @@ void ofSystemAlertDialog(string errorMessage){
 
 
 	#ifdef TARGET_OSX
-		NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];  // The StandardAlert requires a NSAutoreleasePool to avoid memory leaks
-
-		CFStringRef msgStrRef = CFStringCreateWithCString(NULL, errorMessage.c_str(), kCFStringEncodingASCII);
-		DialogRef theItem;
-		DialogItemIndex itemIndex;
-		CreateStandardAlert(kAlertNoteAlert, msgStrRef, NULL, NULL, &theItem);
-		RunStandardAlert(theItem, NULL, &itemIndex);
-
+		NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
+		NSAlert *alertDialog = [NSAlert alertWithMessageText:[NSString stringWithUTF8String:errorMessage.c_str()]
+											   defaultButton:nil
+											 alternateButton:nil
+												 otherButton:nil
+								   informativeTextWithFormat:@""];
+		[alertDialog runModal];
+		restoreAppWindowFocus();
 		[pool drain];
 	#endif
 
 	#if defined( TARGET_LINUX ) && defined (OF_USING_GTK)
 		initGTK();
 		GtkWidget* dialog = gtk_message_dialog_new (NULL, (GtkDialogFlags) 0, GTK_MESSAGE_INFO, GTK_BUTTONS_OK, "%s", errorMessage.c_str());
+
+		gdk_threads_enter();
 		gtk_dialog_run (GTK_DIALOG (dialog));
-		startGTK(dialog);
+		gtk_widget_destroy (dialog);
+		gdk_threads_leave();
 	#endif
 
 	#ifdef TARGET_ANDROID
 		ofxAndroidAlertBox(errorMessage);
 	#endif
 }
-
-
-//----------------------------------------------------------------------------------------
-//------------------------------------------------------------------------------       OSX
-//----------------------------------------------------------------------------------------
-#ifdef TARGET_OSX
-//---------------------------------------------------------------------
-
-pascal void modernEventProc(NavEventCallbackMessage callBackSelector,
-                            NavCBRecPtr callBackParms, void* callBackUD)
-{
-    switch(callBackSelector)
-    {
-        case kNavCBStart:
-        {
-			string defaultPath = *(string*)callBackUD;
-			if(defaultPath!=""){
-				OSErr err;
-
-				//  get an FSRef for the starting location
-				FSRef srcRef;
-				FSPathMakeRef((const UInt8*)ofToDataPath(defaultPath).c_str(), &srcRef, NULL);
-
-				//  make an AEDesc out of it.
-				AEDesc theDesc;
-				err = AECreateDesc(typeFSRef, &srcRef, sizeof (FSRef), &theDesc);
-
-				//  set it.
-				err = NavCustomControl ( callBackParms->context, kNavCtlSetLocation, (void*)&theDesc);
-			}
-        }
-			break;
-    }
-}
-
-// Gets a file to open from the user. Caller must release the CFURLRef.
-CFURLRef GetOpenFileFromUser(bool bFolder, string defaultPath)
-{
-	NavDialogCreationOptions dialogOptions;
-	NavDialogRef dialog;
-	NavReplyRecord replyRecord;
-	CFURLRef fileAsCFURLRef = NULL;
-	FSRef fileAsFSRef;
-	OSStatus status;
-
-	// Get the standard set of defaults
-	status = NavGetDefaultDialogCreationOptions(&dialogOptions);
-
-	require_noerr( status, CantGetNavOptions );
-
-	// Make the window app-wide modal
-	dialogOptions.modality = kWindowModalityAppModal;
-	dialogOptions.optionFlags != kNavAllowOpenPackages;
-
-	// Create the dialog
-	if( bFolder ){
-		status = NavCreateChooseFolderDialog(&dialogOptions, &modernEventProc, NULL, &defaultPath, &dialog);
-	}else{
-		status = NavCreateGetFileDialog(&dialogOptions, NULL, &modernEventProc, NULL, NULL, &defaultPath, &dialog);
-	}
-
-	require_noerr( status, CantCreateDialog );
-
-	// Show it
-	status = NavDialogRun(dialog);
-	require_noerr( status, CantRunDialog );
-
-	// Get the reply
-	status = NavDialogGetReply(dialog, &replyRecord);
-	require( ((status == noErr) || (status == userCanceledErr)), CantGetReply );
-
-	// If the user clicked "Cancel", just bail
-	if ( status == userCanceledErr ) goto UserCanceled;
-
-	// Get the file
-	//TODO: for multiple files - 1 specifies index
-	status = AEGetNthPtr(&(replyRecord.selection), 1, typeFSRef, NULL, NULL, &fileAsFSRef, sizeof(FSRef), NULL);
-	require_noerr( status, CantExtractFSRef );
-
-	// Convert it to a CFURL
-	fileAsCFURLRef = CFURLCreateFromFSRef(NULL, &fileAsFSRef);
-
-	// Cleanup
-CantExtractFSRef:
-UserCanceled:
-	verify_noerr( NavDisposeReply(&replyRecord) );
-CantGetReply:
-CantRunDialog:
-	NavDialogDispose(dialog);
-CantCreateDialog:
-CantGetNavOptions:
-    return fileAsCFURLRef;
-}
-#endif
-//----------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------
-
 
 //----------------------------------------------------------------------------------------
 #ifdef TARGET_WIN32
@@ -375,7 +209,9 @@ static int CALLBACK loadDialogBrowseCallback(
 ){
     string defaultPath = *(string*)lpData;
     if(defaultPath!="" && uMsg==BFFM_INITIALIZED){
-        SendMessage(hwnd,BFFM_SETSELECTION,1,(LPARAM)ofToDataPath(defaultPath).c_str());
+		wchar_t         wideCharacterBuffer[MAX_PATH];
+		wcscpy(wideCharacterBuffer, convertNarrowToWide(ofToDataPath(defaultPath)).c_str());
+        SendMessage(hwnd,BFFM_SETSELECTION,1,(LPARAM)wideCharacterBuffer);
     }
 
 	return 0;
@@ -393,27 +229,32 @@ ofFileDialogResult ofSystemLoadDialog(string windowTitle, bool bFolderSelection,
 	//------------------------------------------------------------------------------       OSX
 	//----------------------------------------------------------------------------------------
 #ifdef TARGET_OSX
-	CFURLRef cfUrl = GetOpenFileFromUser(bFolderSelection,defaultPath);
 
-	CFStringRef cfString = NULL;
+	NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
+	NSOpenPanel * loadDialog = [NSOpenPanel openPanel];
+	[loadDialog setAllowsMultipleSelection:NO];
+	[loadDialog setCanChooseDirectories:bFolderSelection];
+	[loadDialog setResolvesAliases:YES];
 
-	if ( cfUrl != NULL ){
-		cfString = CFURLCopyFileSystemPath( cfUrl, kCFURLPOSIXPathStyle );
-		CFRelease( cfUrl );
-
-		// copy from a CFString into a local c string (http://www.carbondev.com/site/?page=CStrings+)
-		const int kBufferSize = MAXPATHLEN;
-
-		char fileUrl[kBufferSize];
-		Boolean bool1 = CFStringGetCString(cfString,fileUrl,kBufferSize,kCFStringEncodingMacRoman);
-
-		//char fileName[kBufferSize];
-		//Boolean bool2 = CFStringGetCString(reply.saveFileName,fileName,kBufferSize,kCFStringEncodingMacRoman);
-
-		// append strings together
-		CFRelease(cfString);
-		results.filePath = fileUrl;
+	if(!windowTitle.empty()) {
+		[loadDialog setTitle:[NSString stringWithUTF8String:windowTitle.c_str()]];
 	}
+
+	if(!defaultPath.empty()) {
+		NSString * s = [NSString stringWithUTF8String:defaultPath.c_str()];
+		s = [[s stringByExpandingTildeInPath] stringByResolvingSymlinksInPath];
+		NSURL * defaultPathUrl = [NSURL fileURLWithPath:s];
+		[loadDialog setDirectoryURL:defaultPathUrl];
+	}
+
+	NSInteger buttonClicked = [loadDialog runModal];
+	restoreAppWindowFocus();
+
+	if(buttonClicked == NSFileHandlingPanelOKButton) {
+		NSURL * selectedFileURL = [[loadDialog URLs] objectAtIndex:0];
+		results.filePath = string([[selectedFileURL path] UTF8String]);
+	}
+	[pool drain];
 
 #endif
 	//----------------------------------------------------------------------------------------
@@ -424,6 +265,8 @@ ofFileDialogResult ofSystemLoadDialog(string windowTitle, bool bFolderSelection,
 	//------------------------------------------------------------------------------   windoze
 	//----------------------------------------------------------------------------------------
 #ifdef TARGET_WIN32
+	wstring windowTitleW;
+	windowTitleW.assign(windowTitle.begin(), windowTitle.end());
 
 	if (bFolderSelection == false){
 
@@ -442,20 +285,35 @@ ofFileDialogResult ofSystemLoadDialog(string windowTitle, bool bFolderSelection,
 
 		ofn.lpstrFilter = "All\0";
 		ofn.lpstrFile = szFileName;
-#else // VS2010
+#else // Visual Studio
 		wchar_t szFileName[MAX_PATH];
+		wchar_t szTitle[MAX_PATH];
 		if(defaultPath!=""){
-            wcscpy(szFileName,convertNarrowToWide(ofToDataPath(defaultPath)).c_str());
+			wcscpy_s(szFileName,convertNarrowToWide(ofToDataPath(defaultPath)).c_str());
 		}else{
 		    //szFileName = L"";
-			memset(&szFileName,  0, sizeof(szFileName));
+			memset(szFileName,  0, sizeof(szFileName));
 		}
+
+		if (windowTitle != "") {
+			wcscpy_s(szTitle, convertNarrowToWide(windowTitle).c_str());
+			ofn.lpstrTitle = szTitle;
+		} else {
+			ofn.lpstrTitle = NULL;
+		}
+
 		ofn.lpstrFilter = L"All\0";
 		ofn.lpstrFile = szFileName;
 #endif
 		ofn.nMaxFile = MAX_PATH;
 		ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
 		ofn.lpstrDefExt = 0;
+        
+#ifdef __MINGW32_VERSION
+		ofn.lpstrTitle = windowTitle.c_str();
+#else
+		ofn.lpstrTitle = windowTitleW.c_str();
+#endif 
 
 		if(GetOpenFileName(&ofn)) {
 #ifdef __MINGW32_VERSION
@@ -470,8 +328,15 @@ ofFileDialogResult ofSystemLoadDialog(string windowTitle, bool bFolderSelection,
 
 		BROWSEINFOW      bi;
 		wchar_t         wideCharacterBuffer[MAX_PATH];
+		wchar_t			wideWindowTitle[MAX_PATH];
 		LPITEMIDLIST    pidl;
 		LPMALLOC		lpMalloc;
+
+		if (windowTitle != "") {
+			wcscpy(wideWindowTitle, convertNarrowToWide(windowTitle).c_str());
+		} else {
+			wcscpy(wideWindowTitle, L"Select Directory");
+		}
 
 		// Get a pointer to the shell memory allocator
 		if(SHGetMalloc(&lpMalloc) != S_OK){
@@ -480,10 +345,11 @@ ofFileDialogResult ofSystemLoadDialog(string windowTitle, bool bFolderSelection,
 		bi.hwndOwner        =   NULL;
 		bi.pidlRoot         =   NULL;
 		bi.pszDisplayName   =   wideCharacterBuffer;
-		bi.lpszTitle        =   L"Select Directory";
-		bi.ulFlags          =   BIF_RETURNFSANCESTORS | BIF_RETURNONLYFSDIRS;
+		bi.lpszTitle        =   wideWindowTitle;
+		bi.ulFlags          =   BIF_RETURNFSANCESTORS | BIF_RETURNONLYFSDIRS | BIF_USENEWUI;
 		bi.lpfn             =   &loadDialogBrowseCallback;
 		bi.lParam           =   (LPARAM) &defaultPath;
+		bi.lpszTitle        =   windowTitleW.c_str();
 
 		if(pidl = SHBrowseForFolderW(&bi)){
 			// Copy the path directory to the buffer
@@ -535,85 +401,18 @@ ofFileDialogResult ofSystemSaveDialog(string defaultName, string messageName){
 	//----------------------------------------------------------------------------------------
 #ifdef TARGET_OSX
 
-	short fRefNumOut;
-	FSRef output_file;
-	OSStatus err;
+	NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
+	NSSavePanel * saveDialog = [NSSavePanel savePanel];
+	[saveDialog setMessage:[NSString stringWithUTF8String:messageName.c_str()]];
+	[saveDialog setNameFieldStringValue:[NSString stringWithUTF8String:defaultName.c_str()]];
 
-	NavDialogCreationOptions options;
-	NavGetDefaultDialogCreationOptions( &options );
+	NSInteger buttonClicked = [saveDialog runModal];
+	restoreAppWindowFocus();
 
-	options.optionFlags = kNavNoTypePopup + kNavSupportPackages + kNavAllowOpenPackages;
-	options.modality = kWindowModalityAppModal;
-
-	options.optionFlags = kNavDefaultNavDlogOptions;
-	options.message = CFStringCreateWithCString(NULL, messageName.c_str(), kCFStringEncodingASCII);;
-	options.saveFileName = CFStringCreateWithCString(NULL, defaultName.c_str(), kCFStringEncodingASCII);
-	NavDialogRef dialog;
-
-	err = NavCreatePutFileDialog(&options, '.mov', 'Moov', NULL, NULL, &dialog);
-
-	//printf("NavCreatePutFileDialog returned %i\n", err );
-
-	err = NavDialogRun(dialog);
-	//printf("NavDialogRun returned %i\n", err );
-
-	NavUserAction action;
-	action = NavDialogGetUserAction( dialog );
-	//printf("got action %i\n", action);
-	if (action == kNavUserActionNone || action == kNavUserActionCancel) {
-
-		return results;
+	if(buttonClicked == NSFileHandlingPanelOKButton){
+		results.filePath = string([[[saveDialog URL] path] UTF8String]);
 	}
-
-	// get dialog reply
-	NavReplyRecord reply;
-	err = NavDialogGetReply(dialog, &reply);
-	if ( err != noErr )
-		return results;
-
-	if ( reply.replacing ) {
-		ofLog(OF_LOG_WARNING, "ofSystemSaveDialog: need to replace");
-	}
-
-	AEKeyword keyword;
-	DescType actual_type;
-	Size actual_size;
-	FSRef output_dir;
-	err = AEGetNthPtr(&(reply.selection), 1, typeFSRef, &keyword, &actual_type,
-					  &output_dir, sizeof(output_file), &actual_size);
-
-	//printf("AEGetNthPtr returned %i\n", err );
-
-
-	CFURLRef cfUrl = CFURLCreateFromFSRef( kCFAllocatorDefault, &output_dir );
-	CFStringRef cfString = NULL;
-	if ( cfUrl != NULL )
-	{
-		cfString = CFURLCopyFileSystemPath( cfUrl, kCFURLPOSIXPathStyle );
-		CFRelease( cfUrl );
-	}
-
-	// copy from a CFString into a local c string (http://www.carbondev.com/site/?page=CStrings+)
-	const int kBufferSize = 255;
-
-	char folderURL[kBufferSize];
-	Boolean bool1 = CFStringGetCString(cfString,folderURL,kBufferSize,kCFStringEncodingMacRoman);
-
-	char fileName[kBufferSize];
-	Boolean bool2 = CFStringGetCString(reply.saveFileName,fileName,kBufferSize,kCFStringEncodingMacRoman);
-
-	// append strings together
-
-	string url1 = folderURL;
-	string url2 = fileName;
-	string finalURL = url1 + "/" + url2;
-
-	results.filePath = finalURL.c_str();
-
-	//printf("url %s\n", finalURL.c_str());
-
-	// cleanup dialog
-	NavDialogDispose(dialog);
+	[pool drain];
 
 #endif
 	//----------------------------------------------------------------------------------------
@@ -669,63 +468,46 @@ ofFileDialogResult ofSystemSaveDialog(string defaultName, string messageName){
 		results.fileName = ofFilePath::getFileName(results.filePath);
 	}
 
-    
-
-    
-    
 	return results;
 }
 
 #ifdef TARGET_WIN32
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    switch(msg)
-    {
-        /*case WM_CLOSE:
-            DestroyWindow(hwnd);
-        break;
-        case WM_DESTROY:
-            PostQuitMessage(0);
-        break;*/
-        default:
+    //switch(msg)
+    //{
+    //    case WM_CLOSE:
+    //        DestroyWindow(hwnd);
+    //    break;
+    //    case WM_DESTROY:
+    //        PostQuitMessage(0);
+    //    break;
+    //    default:
             return DefWindowProc(hwnd, msg, wParam, lParam);
-    }
-    return 0;
+    //}
 }
 #endif
-
-string ofTextBlock(){
-    
-    
-    
-
-
-
-    
-    
-    
-}
-
 
 
 string ofSystemTextBoxDialog(string question, string text){
 #if defined( TARGET_LINUX ) && defined (OF_USING_GTK)
 	initGTK();
-	GtkWidget* dialog = gtk_message_dialog_new (NULL, (GtkDialogFlags) 0, GTK_MESSAGE_QUESTION, (GtkButtonsType) GTK_BUTTONS_OK_CANCEL, question.c_str() );
+	GtkWidget* dialog = gtk_message_dialog_new (NULL, (GtkDialogFlags) 0, GTK_MESSAGE_QUESTION, (GtkButtonsType) GTK_BUTTONS_OK_CANCEL, "%s", question.c_str() );
 	GtkWidget* content_area = gtk_dialog_get_content_area (GTK_DIALOG (dialog));
 	GtkWidget* textbox = gtk_entry_new();
 	gtk_entry_set_text(GTK_ENTRY(textbox),text.c_str());
 	gtk_container_add (GTK_CONTAINER (content_area), textbox);
+	gdk_threads_enter();
 	gtk_widget_show_all (dialog);
 	if(gtk_dialog_run (GTK_DIALOG (dialog))==GTK_RESPONSE_OK){
 		text = gtk_entry_get_text(GTK_ENTRY(textbox));
 	}
-	startGTK(dialog);
+	gtk_widget_destroy (dialog);
+	gdk_threads_leave();
 #endif
 
 #ifdef TARGET_OSX
 	// create alert dialog
-    
 	NSAlert *alert = [[[NSAlert alloc] init] autorelease];
 	[alert addButtonWithTitle:@"OK"];
 	[alert addButtonWithTitle:@"Cancel"];
@@ -990,7 +772,6 @@ string ofSystemTextBoxDialog(string question, string text){
 
 		 char buf[16384];
 		 GetDlgItemTextA( dialog, 101, buf, 16384 );
-
 		 text = buf;
 
 		 DestroyWindow(dialog);
@@ -1012,6 +793,16 @@ string ofSystemTextBoxDialog(string question, string text){
 
 
 
+///--------------------------------------------------------------------------
+///--------------------------------------------------------------------------
+///TEXTBOX FOR OF
+///--------------------------------------------------------------------------
+///--------------------------------------------------------------------------
+
+
+
+
+
 
 #ifdef TARGET_OSX
 
@@ -1023,7 +814,7 @@ string ofSystemTextBoxDialog(string question, string text){
 @end
 @implementation ofNsWindow{
     
-   }
+}
 - (BOOL)canBecomeKeyWindow {
     return YES;
 }
@@ -1035,7 +826,7 @@ public:
     obj_ofT_( ofNsWindow *wal_,
              NSView * uiView_,
              NSTextField *	myTextView_){
-    
+        
         wal = wal_;
         uiView = uiView_;
         myTextView = myTextView_;
@@ -1044,7 +835,7 @@ public:
         wal = NULL;
         uiView = NULL;
         myTextView = NULL;
-
+        
     }
     ofNsWindow *wal;
     NSView * uiView;
@@ -1178,39 +969,27 @@ void ofTextField::create(int x, int y,int w,int h){
     EnableWindow(WindowFromDC(wglGetCurrentDC()), TRUE);
     SetFocus( WindowFromDC(wglGetCurrentDC()));
 #endif
-
-        
+    
+    
 #ifdef TARGET_OSX
     
-
-            
-            ofNsWindow *wal;
-            NSView* uiView;
-            NSTextField *	myTextView;
+    
+    ofNsWindow *wal;
+    NSView* uiView;
+    NSTextField *	myTextView;
     quantity_ofBoxes++;
     NSDictionary *info = [[NSBundle mainBundle] infoDictionary];
     
     NSString *bundleName = [NSString stringWithFormat:@"%@", [info objectForKey:@"CFBundleExecutable"]];
     
     standardAppName = [bundleName UTF8String];
-
+    
     NSRect Srect =    [[NSScreen mainScreen] frame];
+    
     NSRect rect =    NSMakeRect(x,y,w,h);;
+        
     
-   
-    
-    
-    
-    
-    
-       
-    rect.origin.y = Srect.size.height;
-    
-    rect.origin.y -=y;
-    rect.origin.y -=h*2;
-    rect.origin.x += winPosx;
-    rect.origin.y += winPosy;
-    
+    NSArray * allWindows = [NSApp windows];
     
     myTextView = [[[NSTextField alloc] initWithFrame:rect]autorelease];
     
@@ -1220,47 +999,39 @@ void ofTextField::create(int x, int y,int w,int h){
     [myTextView setEnabled: YES];
     [myTextView setEditable: YES];
     [myTextView setBezeled:YES];
- 
+    
     uiView = [[[NSView alloc] initWithFrame:rect]autorelease];
     uiView.wantsLayer = YES;
     
     
     wal = [[[ofNsWindow alloc]initWithContentRect:rect
-                                                   styleMask:NSBorderlessWindowMask
-                                                     backing:NSBackingStoreBuffered
-                                                       defer:NO]autorelease];
-    
-
-  
+                                        styleMask:NSBorderlessWindowMask
+                                          backing:NSBackingStoreBuffered
+                                            defer:NO]autorelease];
     
     
     
     
-  [wal setContentView:myTextView];
+    [wal setContentView:myTextView];
     [wal makeFirstResponder:nil];
     [wal setLevel:NSNormalWindowLevel];
     [wal makeKeyAndOrderFront:wal];
     [wal orderFront:NSApp];
-
     
-    NSArray * allWindows = [NSApp windows];
-
-    NSWindow * sheetParent = nil;
     
     for(NSWindow * aWindow in allWindows)
     {
-        
-        
-//        NSLog(@"%@",aWindow.miniwindowTitle);
+        //        NSLog(@"%@",aWindow.miniwindowTitle);
         if([aWindow.miniwindowTitle isEqual: [NSString stringWithCString:standardAppName.c_str()]]){
             continue;
         }else{
-appWindow.size.height = [aWindow frame].size.height;
-appWindow.size.width =[aWindow frame].size.width;
-appWindow.origin.x = [aWindow frame].origin.x;
-appWindow.origin.y =[aWindow frame].origin.y;
+            appWindow.size.height = [aWindow frame].size.height;
+            appWindow.size.width =[aWindow frame].size.width;
+            appWindow.origin.x = [aWindow frame].origin.x;
+            appWindow.origin.y =[aWindow frame].origin.y;
+            NSRect rectofT =  NSMakeRect(appWindow.origin.x+x,(appWindow.origin.y+appWindow.size.height)-(y+(h*2)),w,h);
+            [wal setFrame:rectofT display:YES];
             [aWindow addChildWindow:wal ordered:NSWindowAbove];
-            
             
         }
     }
@@ -1274,10 +1045,10 @@ appWindow.origin.y =[aWindow frame].origin.y;
     
     
     
-  //  NSLog(@"%@",allWindows);
- 
+    //  NSLog(@"%@",allWindows);
+    
 #endif
-
+    
 }
 ofTextField::ofTextField(){
     isCreated = false;
@@ -1291,15 +1062,15 @@ ofTextField::ofTextField(){
 ofTextField::  ~ofTextField(){
     if(isCreated){
 #ifdef TARGET_WIN32
-    DestroyWindow(hEdit);
+        DestroyWindow(hEdit);
 #endif
 #ifdef TARGET_OSX
-     
+        
         
         delete pointer;
-
+        
 #endif
-}
+    }
     
     
 }
@@ -1307,41 +1078,41 @@ ofTextField::  ~ofTextField(){
 bool ofTextField::activeApp(){
     bool isactive=false;
 #ifdef TARGET_OSX
-
-//get if of App is in focus (selected) (thought it might be usefull in some cases
+    
+    //get if of App is in focus (selected) (thought it might be usefull in some cases
     
     
     NSDictionary *activeApp = [[NSWorkspace sharedWorkspace] activeApplication];
     
-   
+    
     
     if([(NSString *)[activeApp objectForKey:@"NSApplicationName"]isEqual:[NSString stringWithCString:standardAppName.c_str()]]){
-
+        
         isactive = true;
-
+        
         
         
         
     }else{
         
         isactive =false;
-  
+        
     }
-        
-        
-
-#endif
-/*
-   add pc part of code 
     
-  */
+    
+    
+#endif
+    /*
+     add pc part of code
+     
+     */
     return isactive;
     
     
 }
 
 void ofTextField::draw(int x, int y,int w,int h){
-
+    
     if(!isCreated){
         create(x,y,w,h);
         isCreated=true;
@@ -1349,7 +1120,7 @@ void ofTextField::draw(int x, int y,int w,int h){
         isDrawing=true;
         if(x!=posX||y!=posY||w!=width||h!=height){
 #ifdef TARGET_WIN32
-SetWindowPos( hEdit, 0,  x, y, w, h, SWP_NOZORDER  );
+            SetWindowPos( hEdit, 0,  x, y, w, h, SWP_NOZORDER  );
 #endif
             
 #ifdef TARGET_OSX
@@ -1359,7 +1130,7 @@ SetWindowPos( hEdit, 0,  x, y, w, h, SWP_NOZORDER  );
             
             for(NSWindow * aWindow in allWindows)
             {
-
+                
                 if([aWindow.miniwindowTitle isEqual: [NSString stringWithCString:standardAppName.c_str()]]){
                     continue;
                 }else{
@@ -1371,35 +1142,29 @@ SetWindowPos( hEdit, 0,  x, y, w, h, SWP_NOZORDER  );
             }
             
             
-             
+            
             NSRect Srect =    [[NSScreen mainScreen] frame];
-            int Ypss = y;
-            int Xpss = x;
+           // int Ypss = y+appWindow.origin.y;
+            //int Xpss = x+appWindow.origin.x;
             
-            Ypss = Srect.size.height;
+         //   Ypss = Srect.size.height;
             
-            Ypss -=y;
-            Ypss -=h*2;
-    
-            NSRect rect =    NSMakeRect(x+appWindow.origin.x,Ypss,w,h);
-            if(rect.origin.x<appWindow.size.width-w&&rect.origin.y<appWindow.size.height-h)
-                [pointer->wal setFrame:rect display:!isHiding animate:NO];else{
-                    /*
-                    [[pointer->wal contentView] setHidden:YES];
-                    [pointer->wal setIsVisible:NO];
-                    cout<<"hiding"<<endl;
-                     */
-                }
+          //  Ypss -=y;
+           // Ypss -=h*2;
             
-    
-        
-        //hide();
+            //NSRect rect =    NSMakeRect(x,y,w,h);
+            NSRect rectofT =  NSMakeRect(appWindow.origin.x+x,(appWindow.origin.y+appWindow.size.height)-(y+(h*2)),w,h);
+
+             [pointer->wal setFrame:rectofT display:!isHiding animate:NO];
+            
+            
+            //hide();
 #endif
             posX=x,posY=y,width=w,height=h;
             
         }
     }
-
+    
 }
 
 string ofTextField::getText(){
@@ -1412,11 +1177,11 @@ string ofTextField::getText(){
     text = mbstr2;
 #endif
 #ifdef TARGET_OSX
-
+    
     text = [[pointer->myTextView stringValue] UTF8String];
-
+    
 #endif
-  
+    
     return text;
     
 }
@@ -1428,32 +1193,32 @@ bool ofTextField::showScrollBar(bool showing){
     return showingScrolBar;
     
     /*add scroll for mac version
-    we need to use
-     NSTextView 
+     we need to use
+     NSTextView
      but it's not as goodlooking
-    
-    */
+     
+     */
     
 }
 bool ofTextField::setMultiline(bool multln){
 #ifdef TARGET_WIN32
     showScrollBar(multln);
-
+    
 #endif
 #ifdef TARGET_OSX
-
-//code needed
+    
+    //code needed
 #endif
-
+    
     isMultiline = multln;
     return isMultiline;
 }
 
 void ofTextField::hide()
 {    isHiding = true;
-
+    
 #ifdef TARGET_WIN32
-
+    
     ShowWindow(hEdit, SW_HIDE);
     EnableWindow(hEdit,false);
 #endif
@@ -1462,8 +1227,8 @@ void ofTextField::hide()
     [pointer->wal setIsVisible:NO];
     //code needed
 #endif
-
-
+    
+    
 }
 bool ofTextField::getIsHiding(){
     return isHiding;
@@ -1471,23 +1236,23 @@ bool ofTextField::getIsHiding(){
 void ofTextField::show()
 {
     isHiding = false;
-
+    
 #ifdef TARGET_WIN32
-
+    
     ShowWindow(hEdit, SW_SHOWNORMAL);
     EnableWindow(hEdit,true);
 #endif
     
 #ifdef TARGET_OSX
     [pointer->wal setIsVisible:YES];
-
+    
     //code needed
 #endif
-
-
+    
+    
 }
 bool ofTextField::setPassWordMode(bool passwrdmd ){
-
+    
     isPassword= passwrdmd;
     
     return isPassword;
@@ -1502,7 +1267,7 @@ void ofTextField::clearText(string dtext){
     
     //code needed
 #endif
-
+    
     
 }
 
@@ -1513,7 +1278,7 @@ void ofTextField::clearText(string dtext){
 //how to hide it when you don't want it.
 void ofTextField::hideIfNotDrawing(){
 #ifdef TARGET_WIN32
-
+    
     if(!isDrawing)hide();
     if(isDrawing){
         
@@ -1525,35 +1290,8 @@ void ofTextField::hideIfNotDrawing(){
     
     //code needed
 #endif
-
-
+    
+    
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 

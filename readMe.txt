@@ -1,3 +1,11 @@
+
+//Update 
+
+Tested it with OF 8.1
+
+Added support for GLFW
+
+//Update
 A legit UTF8 - Unicode aware Textbox for openFrameworks (mac & pc)
 
 This textbox - unlike all other OF textboxes- derives directly from microsoft and apples official classes and is attached above open gl. - not rendered by it.

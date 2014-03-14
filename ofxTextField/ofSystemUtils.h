@@ -1,12 +1,11 @@
 #pragma once
 
 
-
-
 class ofFileDialogResult{
 	public:
 		ofFileDialogResult();
 		
+		//TODO: only 1 file for now
 		string getName();
 		string getPath();
 		
@@ -14,14 +13,17 @@ class ofFileDialogResult{
 		string fileName;
 		bool bSuccess;
 };
-bool ofSystemYes_NoDialoge(string errorMessage="Alert",string message="");
 
 void ofSystemAlertDialog(string errorMessage);
 ofFileDialogResult ofSystemLoadDialog(string windowTitle="", bool bFolderSelection = false, string defaultPath="");
 ofFileDialogResult ofSystemSaveDialog(string defaultName, string messageName);
 string ofSystemTextBoxDialog(string question, string text="");
+///--------------------------------------------------------------------------
+///--------------------------------------------------------------------------
+///TEXTBOX FOR OF
+///--------------------------------------------------------------------------
+///--------------------------------------------------------------------------
 
-string ofTextBlock();
 
 #ifdef TARGET_WIN32
 
@@ -48,7 +50,7 @@ class ofTextField{
     bool isCreated,isMultiline,isPassword,isHiding,isDrawing;
     void create(int x, int y,int w,int h);
 #ifdef TARGET_WIN32
-
+    
     HWND hEdit;
     WNDCLASSEX wc;
 	MSG Msg;
@@ -57,7 +59,7 @@ class ofTextField{
     CGRect appWindow;
     obj_ofT_ * pointer;
 #endif
-
+    
     int winPosx,winPosy;
 	int posX,posY,width,height;
 	bool showingScrolBar;
@@ -77,9 +79,4 @@ public:
     void hideIfNotDrawing();
     void clearText(string dtext="");
 };
-
-
-
-
-
 
