@@ -58,6 +58,7 @@ class ofTextField{
 #ifdef TARGET_OSX
     CGRect appWindow;
     obj_ofT_ * pointer;
+    void *pointerToWindow;
 #endif
     
     int winPosx,winPosy;

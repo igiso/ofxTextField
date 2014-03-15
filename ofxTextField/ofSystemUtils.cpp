@@ -1032,7 +1032,7 @@ void ofTextField::create(int x, int y,int w,int h){
             NSRect rectofT =  NSMakeRect(appWindow.origin.x+x,(appWindow.origin.y+appWindow.size.height)-(y+(h*2)),w,h);
             [wal setFrame:rectofT display:YES];
             [aWindow addChildWindow:wal ordered:NSWindowAbove];
-            
+            pointerToWindow = aWindow;
         }
     }
     
@@ -1058,6 +1058,7 @@ ofTextField::ofTextField(){
     isPassword =false;
     isHiding =false;
     isDrawing = true;
+    pointerToWindow = NULL;
 }
 ofTextField::  ~ofTextField(){
     if(isCreated){
@@ -1068,7 +1069,7 @@ ofTextField::  ~ofTextField(){
         
         
         delete pointer;
-        
+        pointerToWindow =NULL;
 #endif
     }
     
@@ -1118,29 +1119,25 @@ void ofTextField::draw(int x, int y,int w,int h){
         isCreated=true;
     }else{
         isDrawing=true;
-        if(x!=posX||y!=posY||w!=width||h!=height){
+        bool rePosisionTheTextBox = false;
+#ifdef TARGET_OSX
+        NSWindow * aWindow = (NSWindow *)pointerToWindow;
+        if([aWindow frame].size.width!=appWindow.size.width||[aWindow frame].size.height!=appWindow.size.height)rePosisionTheTextBox=true;
+        
+#endif
+        
+        if(x!=posX||y!=posY||w!=width||h!=height||rePosisionTheTextBox){
 #ifdef TARGET_WIN32
             SetWindowPos( hEdit, 0,  x, y, w, h, SWP_NOZORDER  );
 #endif
             
 #ifdef TARGET_OSX
-            NSArray * allWindows = [NSApp windows];
             
-            NSWindow * sheetParent = nil;
-            
-            for(NSWindow * aWindow in allWindows)
-            {
-                
-                if([aWindow.miniwindowTitle isEqual: [NSString stringWithCString:standardAppName.c_str()]]){
-                    continue;
-                }else{
                     appWindow.size.height = [aWindow frame].size.height;
                     appWindow.size.width =[aWindow frame].size.width;
                     appWindow.origin.x = [aWindow frame].origin.x;
                     appWindow.origin.y =[aWindow frame].origin.y;
-                }
-            }
-            
+         
             
             
             NSRect Srect =    [[NSScreen mainScreen] frame];
@@ -1156,8 +1153,7 @@ void ofTextField::draw(int x, int y,int w,int h){
             NSRect rectofT =  NSMakeRect(appWindow.origin.x+x,(appWindow.origin.y+appWindow.size.height)-(y+(h*2)),w,h);
 
              [pointer->wal setFrame:rectofT display:!isHiding animate:NO];
-            
-            
+             [aWindow setMinSize:NSMakeSize(x+w, h+y+h)];
             //hide();
 #endif
             posX=x,posY=y,width=w,height=h;
