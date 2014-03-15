@@ -1,5 +1,7 @@
+//Update 2 : 15/3/2014 - fixed autopositioning bug on osx
 
-//Update 
+
+//Update 1
 
 Tested it with OF 8.1
 
