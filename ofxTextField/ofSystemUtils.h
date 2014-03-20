@@ -52,7 +52,7 @@ class ofTextField{
 #ifdef TARGET_WIN32
     
     HWND hEdit;
-    _WNDCLASSEXW wc;
+    WNDCLASSEXW wc;
 	MSG Msg;
 #endif
 #ifdef TARGET_OSX
