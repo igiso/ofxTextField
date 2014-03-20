@@ -52,7 +52,7 @@ class ofTextField{
 #ifdef TARGET_WIN32
     
     HWND hEdit;
-    WNDCLASSEX wc;
+    _WNDCLASSEXW wc;
 	MSG Msg;
 #endif
 #ifdef TARGET_OSX
@@ -80,4 +80,5 @@ public:
     void hideIfNotDrawing();
     void clearText(string dtext="");
 };
+
 

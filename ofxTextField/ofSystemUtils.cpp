@@ -791,8 +791,6 @@ string ofSystemTextBoxDialog(string question, string text){
 
 
 
-
-
 ///--------------------------------------------------------------------------
 ///--------------------------------------------------------------------------
 ///TEXTBOX FOR OF
@@ -876,8 +874,8 @@ void ofTextField::create(int x, int y,int w,int h){
     memset(&wc, 0, sizeof(wc));
     int OF_CENTER_POSX_ = 0;
     int OF_CENTER_POSY_ = 0;
+	const LPCWSTR g_szClassName = L"myWindowClass\0";
     
-    const LPCSTR g_szClassName = "myWindowClass\0";
     
     wc.cbSize        = sizeof(WNDCLASSEX);
     wc.style         = CS_HREDRAW | CS_VREDRAW;
@@ -895,7 +893,7 @@ void ofTextField::create(int x, int y,int w,int h){
     wc.hIconSm       = NULL;
     
     
-    if(!RegisterClassEx(&wc))
+    if(!RegisterClassExW(&wc))
     {
         
         DWORD err=GetLastError();
@@ -904,8 +902,8 @@ void ofTextField::create(int x, int y,int w,int h){
             ;
             
         } else {
-			MessageBox(NULL, "Window Registration Failed!\0", "Error!\0",
-                       MB_ICONEXCLAMATION | MB_OK);
+			MessageBoxW(NULL, L"Window Registration Failed!\0", L"Error!\0",
+                        MB_ICONEXCLAMATION | MB_OK);
             //	return text;
 		}
         
@@ -915,7 +913,7 @@ void ofTextField::create(int x, int y,int w,int h){
     
     RECT rc;
     HWND dialog = CreateWindowExW(WS_EX_LAYERED | WS_OVERLAPPED,
-                                  convertNarrowToWide(g_szClassName).c_str(),
+                                  g_szClassName,
                                   convertNarrowToWide(question).c_str(),
                                   WS_VISIBLE | WS_OVERLAPPED,
                                   x, y, w, h,
@@ -930,8 +928,8 @@ void ofTextField::create(int x, int y,int w,int h){
     
     if(dialog == NULL)
     {
-        MessageBox(NULL, "Window Creation Failed!\0", "Error!\0",
-                   MB_ICONEXCLAMATION | MB_OK);
+        MessageBoxW(NULL, L"Window Creation Failed!\0", L"Error!\0",
+                    MB_ICONEXCLAMATION | MB_OK);
         //   return text;
     }
     
@@ -987,7 +985,7 @@ void ofTextField::create(int x, int y,int w,int h){
     NSRect Srect =    [[NSScreen mainScreen] frame];
     
     NSRect rect =    NSMakeRect(x,y,w,h);;
-        
+    
     
     NSArray * allWindows = [NSApp windows];
     
@@ -1058,7 +1056,10 @@ ofTextField::ofTextField(){
     isPassword =false;
     isHiding =false;
     isDrawing = true;
+#ifdef TARGET_OSX
     pointerToWindow = NULL;
+#endif
+    
 }
 ofTextField::  ~ofTextField(){
     if(isCreated){
@@ -1133,27 +1134,27 @@ void ofTextField::draw(int x, int y,int w,int h){
             
 #ifdef TARGET_OSX
             
-                    appWindow.size.height = [aWindow frame].size.height;
-                    appWindow.size.width =[aWindow frame].size.width;
-                    appWindow.origin.x = [aWindow frame].origin.x;
-                    appWindow.origin.y =[aWindow frame].origin.y;
-         
+            appWindow.size.height = [aWindow frame].size.height;
+            appWindow.size.width =[aWindow frame].size.width;
+            appWindow.origin.x = [aWindow frame].origin.x;
+            appWindow.origin.y =[aWindow frame].origin.y;
+            
             
             
             NSRect Srect =    [[NSScreen mainScreen] frame];
-           // int Ypss = y+appWindow.origin.y;
+            // int Ypss = y+appWindow.origin.y;
             //int Xpss = x+appWindow.origin.x;
             
-         //   Ypss = Srect.size.height;
+            //   Ypss = Srect.size.height;
             
-          //  Ypss -=y;
-           // Ypss -=h*2;
+            //  Ypss -=y;
+            // Ypss -=h*2;
             
             //NSRect rect =    NSMakeRect(x,y,w,h);
             NSRect rectofT =  NSMakeRect(appWindow.origin.x+x,(appWindow.origin.y+appWindow.size.height)-(y+(h*2)),w,h);
-
-             [pointer->wal setFrame:rectofT display:!isHiding animate:NO];
-             [aWindow setMinSize:NSMakeSize(x+w, h+y+h)];
+            
+            [pointer->wal setFrame:rectofT display:!isHiding animate:NO];
+            [aWindow setMinSize:NSMakeSize(x+w, h+y+h)];
             //hide();
 #endif
             posX=x,posY=y,width=w,height=h;
@@ -1289,5 +1290,4 @@ void ofTextField::hideIfNotDrawing(){
     
     
 }
-
 
