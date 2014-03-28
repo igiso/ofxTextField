@@ -18,6 +18,9 @@ void ofSystemAlertDialog(string errorMessage);
 ofFileDialogResult ofSystemLoadDialog(string windowTitle="", bool bFolderSelection = false, string defaultPath="");
 ofFileDialogResult ofSystemSaveDialog(string defaultName, string messageName);
 string ofSystemTextBoxDialog(string question, string text="");
+
+
+
 ///--------------------------------------------------------------------------
 ///--------------------------------------------------------------------------
 ///TEXTBOX FOR OF
@@ -47,7 +50,7 @@ extern int quantity_ofBoxes;
 
 class ofTextField{
     string text,question, standardAppName;
-    bool isCreated,isMultiline,isPassword,isHiding,isDrawing;
+    bool isCreated,isMultiline,isPassword,isHiding,isDrawing,isCentered;
     void create(int x, int y,int w,int h);
 #ifdef TARGET_WIN32
     
@@ -79,6 +82,5 @@ public:
     bool getIsHiding();
     void hideIfNotDrawing();
     void clearText(string dtext="");
+    void setAllignCenter(bool center=true);
 };
-
-

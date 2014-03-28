@@ -816,6 +816,13 @@ string ofSystemTextBoxDialog(string question, string text){
 - (BOOL)canBecomeKeyWindow {
     return YES;
 }
+- (NSText *)fieldEditor:(BOOL)createWhenNeeded forObject:(id)anObject
+{
+    NSText* text = [super fieldEditor:createWhenNeeded forObject:anObject];
+    if ([text isKindOfClass:[NSTextView class]])
+        [(NSTextView *)text setUsesRuler:YES];
+    return text;
+}
 @end
 
 
@@ -823,21 +830,37 @@ struct obj_ofT_{
 public:
     obj_ofT_( ofNsWindow *wal_,
              NSView * uiView_,
-             NSTextField *	myTextView_){
+             NSTextView *	myTextView_){
         
         wal = wal_;
         uiView = uiView_;
         myTextView = myTextView_;
+        myTextField=NULL;
+        
     }
+    obj_ofT_( ofNsWindow *wal_,
+             NSView * uiView_,
+             NSTextField *	myTextField_){
+        
+        wal = wal_;
+        uiView = uiView_;
+        myTextField = myTextField_;
+        myTextView = NULL;
+        
+        
+    }
+    
     ~obj_ofT_(){
         wal = NULL;
         uiView = NULL;
         myTextView = NULL;
-        
+        myTextField=NULL;
     }
     ofNsWindow *wal;
     NSView * uiView;
-    NSTextField *	myTextView;
+    NSTextView *	myTextView;
+    NSTextField*	myTextField;
+    
     int id;
     
 };
@@ -845,12 +868,6 @@ int quantity_ofBoxes;
 extern "C" AXError _AXUIElementGetWindow(AXUIElementRef, CGWindowID* out);
 
 #endif
-
-
-
-
-
-
 
 
 
@@ -971,10 +988,11 @@ void ofTextField::create(int x, int y,int w,int h){
     
 #ifdef TARGET_OSX
     
-    
     ofNsWindow *wal;
     NSView* uiView;
-    NSTextField *	myTextView;
+    NSTextView *	myTextView;
+    NSTextField *	myTextField;
+    
     quantity_ofBoxes++;
     NSDictionary *info = [[NSBundle mainBundle] infoDictionary];
     
@@ -989,14 +1007,8 @@ void ofTextField::create(int x, int y,int w,int h){
     
     NSArray * allWindows = [NSApp windows];
     
-    myTextView = [[[NSTextField alloc] initWithFrame:rect]autorelease];
     
-    [myTextView setStringValue:[NSString stringWithCString:text.c_str()
-                                                  encoding:NSUTF8StringEncoding]];
     
-    [myTextView setEnabled: YES];
-    [myTextView setEditable: YES];
-    [myTextView setBezeled:YES];
     
     uiView = [[[NSView alloc] initWithFrame:rect]autorelease];
     uiView.wantsLayer = YES;
@@ -1007,14 +1019,51 @@ void ofTextField::create(int x, int y,int w,int h){
                                           backing:NSBackingStoreBuffered
                                             defer:NO]autorelease];
     
+    if(isMultiline){
+        
+        myTextView = [[[NSTextView alloc] initWithFrame:rect]autorelease];
+        
+        [myTextView setString:[NSString stringWithCString:text.c_str()
+                                                 encoding:NSUTF8StringEncoding]];
+        
+        [myTextView setEditable: YES];
+        [myTextView setRichText:NO];
+        NSScrollView *scrollview = [[[NSScrollView alloc]
+                                     initWithFrame:rect]autorelease];
+        NSSize contentSize = [scrollview contentSize];
+        
+        [scrollview setBorderType:NSGrooveBorder];
+        
+        [wal fieldEditor:YES forObject:myTextView];
+        [scrollview setDocumentView:myTextView];
+        [scrollview setHasVerticalScroller:YES];
+        [scrollview setHasVerticalRuler:YES];
+        [scrollview setAutohidesScrollers:NO];
+        [scrollview setBorderType:NSBezelBorder];
+        [wal setContentView:scrollview];
+        [wal makeFirstResponder:myTextView];
+        
+    }else{
+        myTextField = [[[NSTextField alloc] initWithFrame:rect]autorelease];
+        
+        [myTextField setStringValue:[NSString stringWithCString:text.c_str()
+                                                       encoding:NSUTF8StringEncoding]];
+        
+        [myTextField setBezeled:YES];
+        [myTextField setEditable:YES];
+        [myTextField setEnabled:YES];
+        [wal setContentView:myTextField];
+        [wal makeFirstResponder:myTextField];
+        
+    }
     
     
     
-    [wal setContentView:myTextView];
-    [wal makeFirstResponder:nil];
     [wal setLevel:NSNormalWindowLevel];
     [wal makeKeyAndOrderFront:wal];
     [wal orderFront:NSApp];
+    
+    
     
     
     for(NSWindow * aWindow in allWindows)
@@ -1027,7 +1076,7 @@ void ofTextField::create(int x, int y,int w,int h){
             appWindow.size.width =[aWindow frame].size.width;
             appWindow.origin.x = [aWindow frame].origin.x;
             appWindow.origin.y =[aWindow frame].origin.y;
-            NSRect rectofT =  NSMakeRect(appWindow.origin.x+x,(appWindow.origin.y+appWindow.size.height)-(y+(h*2)),w,h);
+            NSRect rectofT =  NSMakeRect(appWindow.origin.x+x,(appWindow.origin.y+appWindow.size.height-20)-(y+h),w,h);
             [wal setFrame:rectofT display:YES];
             [aWindow addChildWindow:wal ordered:NSWindowAbove];
             pointerToWindow = aWindow;
@@ -1036,15 +1085,17 @@ void ofTextField::create(int x, int y,int w,int h){
     
     
     
-    
-    pointer = new obj_ofT_(wal,uiView,myTextView);
+    if(isMultiline)
+        pointer = new obj_ofT_(wal,uiView,myTextView);
+    else
+        pointer = new obj_ofT_(wal,uiView,myTextField);
     
     
     
     
     
     //  NSLog(@"%@",allWindows);
-    
+ 
 #endif
     
 }
@@ -1052,7 +1103,7 @@ ofTextField::ofTextField(){
     isCreated = false;
     posX=0,posY=0,width=0,height=0;
     showingScrolBar=false;
-    isMultiline=false;
+    isMultiline=false;//change this if you want multiline text as default
     isPassword =false;
     isHiding =false;
     isDrawing = true;
@@ -1067,13 +1118,17 @@ ofTextField::  ~ofTextField(){
         DestroyWindow(hEdit);
 #endif
 #ifdef TARGET_OSX
+        NSWindow * aWindow = (NSWindow *)pointerToWindow;
         
+        
+        [aWindow removeChildWindow:pointer->wal];
         
         delete pointer;
         pointerToWindow =NULL;
+        
 #endif
+        isCreated=false;
     }
-    
     
 }
 
@@ -1142,20 +1197,12 @@ void ofTextField::draw(int x, int y,int w,int h){
             
             
             NSRect Srect =    [[NSScreen mainScreen] frame];
-            // int Ypss = y+appWindow.origin.y;
-            //int Xpss = x+appWindow.origin.x;
-            
-            //   Ypss = Srect.size.height;
-            
-            //  Ypss -=y;
-            // Ypss -=h*2;
-            
-            //NSRect rect =    NSMakeRect(x,y,w,h);
-            NSRect rectofT =  NSMakeRect(appWindow.origin.x+x,(appWindow.origin.y+appWindow.size.height)-(y+(h*2)),w,h);
+           
+            NSRect rectofT =  NSMakeRect(appWindow.origin.x+x,(appWindow.origin.y+appWindow.size.height-20)-(y+h),w,h);
             
             [pointer->wal setFrame:rectofT display:!isHiding animate:NO];
             [aWindow setMinSize:NSMakeSize(x+w, h+y+h)];
-            //hide();
+
 #endif
             posX=x,posY=y,width=w,height=h;
             
@@ -1175,7 +1222,10 @@ string ofTextField::getText(){
 #endif
 #ifdef TARGET_OSX
     
-    text = [[pointer->myTextView stringValue] UTF8String];
+    if (!isMultiline)
+        text = [[pointer->myTextField stringValue] UTF8String];
+    else
+        text = [[pointer->myTextView string] UTF8String];
     
 #endif
     
@@ -1189,31 +1239,18 @@ bool ofTextField::showScrollBar(bool showing){
     showingScrolBar = showing;
     return showingScrolBar;
     
-    /*add scroll for mac version
-     we need to use
-     NSTextView
-     but it's not as goodlooking
-     
-     */
-    
+       
 }
 bool ofTextField::setMultiline(bool multln){
-#ifdef TARGET_WIN32
     showScrollBar(multln);
     
-#endif
-#ifdef TARGET_OSX
-    
-    //code needed
-#endif
     
     isMultiline = multln;
     return isMultiline;
 }
 
 void ofTextField::hide()
-{    isHiding = true;
-    
+{       if(!isHiding){
 #ifdef TARGET_WIN32
     
     ShowWindow(hEdit, SW_HIDE);
@@ -1221,30 +1258,51 @@ void ofTextField::hide()
 #endif
     
 #ifdef TARGET_OSX
-    [pointer->wal setIsVisible:NO];
-    //code needed
+    if (!isMultiline){
+        [pointer->myTextField setHidden:YES];
+        [pointer->wal setAlphaValue:0];
+    }
+    else{
+        [pointer->myTextView setHidden:YES];
+        [pointer->wal setAlphaValue:0];
+        
+    }
+    
+    
 #endif
+    isHiding = true;
     
-    
+}
 }
 bool ofTextField::getIsHiding(){
     return isHiding;
 }
 void ofTextField::show()
 {
-    isHiding = false;
     
+    if(isHiding){
+        
 #ifdef TARGET_WIN32
-    
-    ShowWindow(hEdit, SW_SHOWNORMAL);
-    EnableWindow(hEdit,true);
+        
+        ShowWindow(hEdit, SW_SHOWNORMAL);
+        EnableWindow(hEdit,true);
 #endif
-    
+        
 #ifdef TARGET_OSX
-    [pointer->wal setIsVisible:YES];
-    
-    //code needed
+        
+        if (!isMultiline){
+            [pointer->myTextField setHidden:NO];
+            [pointer->wal setAlphaValue:1];
+        }
+        else{
+            [pointer->myTextView setHidden:NO];
+            [pointer->wal setAlphaValue:1];
+            
+        }
+        
 #endif
+        isHiding = false;
+    }
     
     
 }
