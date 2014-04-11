@@ -20,7 +20,6 @@ ofFileDialogResult ofSystemSaveDialog(string defaultName, string messageName);
 string ofSystemTextBoxDialog(string question, string text="");
 
 
-
 ///--------------------------------------------------------------------------
 ///--------------------------------------------------------------------------
 ///TEXTBOX FOR OF
@@ -67,20 +66,20 @@ class ofTextField{
     int winPosx,winPosy;
 	int posX,posY,width,height;
 	bool showingScrolBar;
+    bool showScrollBar(bool showing = true);
 public:
     bool activeApp();
     ofTextField();
     ~ofTextField();
-    void draw(int x, int y,int w,int h);
+    void draw(int x, int y,int w,int h);//use in loop
     
-    string getText();
-    bool showScrollBar(bool showing = true);
-    bool setPassWordMode(bool passwrdmd = true);
-    bool setMultiline(bool multiln=true);
-    void hide();
-    void show();
-    bool getIsHiding();
-    void hideIfNotDrawing();
-    void clearText(string dtext="");
-    void setAllignCenter(bool center=true);
+    string getText();//use in loop
+    bool setPassWordMode(bool passwrdmd = true);//call in setup() (pc only)
+    bool setMultiline(bool multiln=true);//setup()
+    void hide();//loop
+    void show();//loop
+    bool getIsHiding();//loop
+    void hideIfNotDrawing();//dont' use this yet
+    void setText(string dtext="");//setup or loop
+    void setAllignCenter(bool center=true);//don't use this yet
 };

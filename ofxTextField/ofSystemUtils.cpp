@@ -791,6 +791,7 @@ string ofSystemTextBoxDialog(string question, string text){
 
 
 
+
 ///--------------------------------------------------------------------------
 ///--------------------------------------------------------------------------
 ///TEXTBOX FOR OF
@@ -921,7 +922,7 @@ void ofTextField::create(int x, int y,int w,int h){
         } else {
 			MessageBoxW(NULL, L"Window Registration Failed!\0", L"Error!\0",
                         MB_ICONEXCLAMATION | MB_OK);
-            //	return text;
+
 		}
         
         
@@ -947,7 +948,7 @@ void ofTextField::create(int x, int y,int w,int h){
     {
         MessageBoxW(NULL, L"Window Creation Failed!\0", L"Error!\0",
                     MB_ICONEXCLAMATION | MB_OK);
-        //   return text;
+
     }
     
     
@@ -1095,7 +1096,7 @@ void ofTextField::create(int x, int y,int w,int h){
     
     
     //  NSLog(@"%@",allWindows);
- 
+    
 #endif
     
 }
@@ -1197,12 +1198,12 @@ void ofTextField::draw(int x, int y,int w,int h){
             
             
             NSRect Srect =    [[NSScreen mainScreen] frame];
-           
+            
             NSRect rectofT =  NSMakeRect(appWindow.origin.x+x,(appWindow.origin.y+appWindow.size.height-20)-(y+h),w,h);
             
             [pointer->wal setFrame:rectofT display:!isHiding animate:NO];
             [aWindow setMinSize:NSMakeSize(x+w, h+y+h)];
-
+            
 #endif
             posX=x,posY=y,width=w,height=h;
             
@@ -1212,6 +1213,7 @@ void ofTextField::draw(int x, int y,int w,int h){
 }
 
 string ofTextField::getText(){
+    if(isCreated){
 #ifdef TARGET_WIN32
     wchar_t wstr[16384];
     GetWindowTextW( hEdit, wstr, 16384 );
@@ -1228,7 +1230,7 @@ string ofTextField::getText(){
         text = [[pointer->myTextView string] UTF8String];
     
 #endif
-    
+    }
     return text;
     
 }
@@ -1239,7 +1241,7 @@ bool ofTextField::showScrollBar(bool showing){
     showingScrolBar = showing;
     return showingScrolBar;
     
-       
+    
 }
 bool ofTextField::setMultiline(bool multln){
     showScrollBar(multln);
@@ -1250,7 +1252,7 @@ bool ofTextField::setMultiline(bool multln){
 }
 
 void ofTextField::hide()
-{       if(!isHiding){
+{       if(!isHiding&&isCreated){
 #ifdef TARGET_WIN32
     
     ShowWindow(hEdit, SW_HIDE);
@@ -1280,7 +1282,7 @@ bool ofTextField::getIsHiding(){
 void ofTextField::show()
 {
     
-    if(isHiding){
+    if(isHiding&&isCreated){
         
 #ifdef TARGET_WIN32
         
@@ -1306,46 +1308,58 @@ void ofTextField::show()
     
     
 }
+
 bool ofTextField::setPassWordMode(bool passwrdmd ){
     
     isPassword= passwrdmd;
     
     return isPassword;
 }
-void ofTextField::clearText(string dtext){
-    
+
+void ofTextField::setText(string dtext){
+    if(isCreated){
 #ifdef TARGET_WIN32
-    
-    SetWindowTextW(hEdit,L"");
+        
+        SetWindowTextW(hEdit,convertNarrowToWide(dtext).c_str());
 #endif
 #ifdef TARGET_OSX
-    
-    //code needed
+        if (!isMultiline){
+            [pointer->myTextField setStringValue:[NSString stringWithCString:dtext.c_str()
+                                                                    encoding:NSUTF8StringEncoding]];
+        }
+        else{
+            [pointer->myTextView setString:[NSString stringWithCString:dtext.c_str()
+                                                              encoding:NSUTF8StringEncoding]];
+        }
 #endif
+        
+    }else{
+        text =dtext;
+    }
+    //code needed
     
     
 }
 
 
-///this is the weird part of the code
-//since this textbox is drawing above openGL
-//you might want to use this function to figure out
-//how to hide it when you don't want it.
+/*
+ //not finished yet
+Think of this like a non mandatory function to be called above all in ofApp::update
+since this textbox is drawing above openGL
+you might want to use this to figure out
+when to hide it automatically when you don't draw it.
+this is just an idea  to make things more OFish like
+in reality it might make more sense to just use the hide() and show() functions directly
+*/
 void ofTextField::hideIfNotDrawing(){
-#ifdef TARGET_WIN32
     
     if(!isDrawing)hide();
     if(isDrawing){
         
         isDrawing=false;
     }
-#endif
-    
-#ifdef TARGET_OSX
-    
-    //code needed
-#endif
     
     
 }
+
 
