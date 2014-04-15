@@ -1,3 +1,25 @@
+This is work in process
+What this addon currently does:
+
+UNICODE TEXT INPUT
+DROP DOWN MENUS
+COPY, PASTE, SELECT etc
+SCROLL BAR
+MULTILINE TEXT.
+
+much more coming.
+
+
+
+//UPDATE 10/4/2014
+
+fixed some bugs that caused crashes.
+
+setText() can be called both in Setup and in loop
+
+
+
+
 
 
 //Update 3 28/3/2014
