@@ -1,4 +1,4 @@
-This is work in process
+This is work in progress
 What this addon currently does:
 
 UNICODE TEXT INPUT
