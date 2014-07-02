@@ -922,7 +922,7 @@ void ofTextField::create(int x, int y,int w,int h){
         } else {
 			MessageBoxW(NULL, L"Window Registration Failed!\0", L"Error!\0",
                         MB_ICONEXCLAMATION | MB_OK);
-
+            
 		}
         
         
@@ -948,7 +948,7 @@ void ofTextField::create(int x, int y,int w,int h){
     {
         MessageBoxW(NULL, L"Window Creation Failed!\0", L"Error!\0",
                     MB_ICONEXCLAMATION | MB_OK);
-
+        
     }
     
     
@@ -1073,6 +1073,7 @@ void ofTextField::create(int x, int y,int w,int h){
         if([aWindow.miniwindowTitle isEqual: [NSString stringWithCString:standardAppName.c_str()]]){
             continue;
         }else{
+            [aWindow setReleasedWhenClosed:NO];
             appWindow.size.height = [aWindow frame].size.height;
             appWindow.size.width =[aWindow frame].size.width;
             appWindow.origin.x = [aWindow frame].origin.x;
@@ -1215,20 +1216,20 @@ void ofTextField::draw(int x, int y,int w,int h){
 string ofTextField::getText(){
     if(isCreated){
 #ifdef TARGET_WIN32
-    wchar_t wstr[16384];
-    GetWindowTextW( hEdit, wstr, 16384 );
-    char mbstr2[16384];
-    
-    WideCharToMultiByte(CP_UTF8,0,wstr,16384,mbstr2,16384,NULL,NULL);
-    text = mbstr2;
+        wchar_t wstr[16384];
+        GetWindowTextW( hEdit, wstr, 16384 );
+        char mbstr2[16384];
+        
+        WideCharToMultiByte(CP_UTF8,0,wstr,16384,mbstr2,16384,NULL,NULL);
+        text = mbstr2;
 #endif
 #ifdef TARGET_OSX
-    
-    if (!isMultiline)
-        text = [[pointer->myTextField stringValue] UTF8String];
-    else
-        text = [[pointer->myTextView string] UTF8String];
-    
+        
+        if (!isMultiline)
+            text = [[pointer->myTextField stringValue] UTF8String];
+        else
+            text = [[pointer->myTextView string] UTF8String];
+        
 #endif
     }
     return text;
@@ -1330,6 +1331,7 @@ void ofTextField::setText(string dtext){
         else{
             [pointer->myTextView setString:[NSString stringWithCString:dtext.c_str()
                                                               encoding:NSUTF8StringEncoding]];
+            
         }
 #endif
         
@@ -1342,24 +1344,27 @@ void ofTextField::setText(string dtext){
 }
 
 
-/*
- //not finished yet
-Think of this like a non mandatory function to be called above all in ofApp::update
-since this textbox is drawing above openGL
-you might want to use this to figure out
-when to hide it automatically when you don't draw it.
-this is just an idea  to make things more OFish like
-in reality it might make more sense to just use the hide() and show() functions directly
-*/
+///this is the weird part of the code
+//since this textbox is drawing above openGL
+//you might want to use this function to figure out
+//how to hide it when you don't want it.
 void ofTextField::hideIfNotDrawing(){
+#ifdef TARGET_WIN32
     
     if(!isDrawing)hide();
     if(isDrawing){
         
         isDrawing=false;
     }
+#endif
+    
+#ifdef TARGET_OSX
+    
+    //code needed
+#endif
     
     
 }
+
 
 
