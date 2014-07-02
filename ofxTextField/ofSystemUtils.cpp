@@ -1042,7 +1042,6 @@ void ofTextField::create(int x, int y,int w,int h){
         [scrollview setAutohidesScrollers:NO];
         [scrollview setBorderType:NSBezelBorder];
         [wal setContentView:scrollview];
-        [wal makeFirstResponder:myTextView];
         
     }else{
         myTextField = [[[NSTextField alloc] initWithFrame:rect]autorelease];
@@ -1054,7 +1053,6 @@ void ofTextField::create(int x, int y,int w,int h){
         [myTextField setEditable:YES];
         [myTextField setEnabled:YES];
         [wal setContentView:myTextField];
-        [wal makeFirstResponder:myTextField];
         
     }
     
@@ -1069,11 +1067,10 @@ void ofTextField::create(int x, int y,int w,int h){
     
     for(NSWindow * aWindow in allWindows)
     {
-        //        NSLog(@"%@",aWindow.miniwindowTitle);
         if([aWindow.miniwindowTitle isEqual: [NSString stringWithCString:standardAppName.c_str()]]){
             continue;
         }else{
-            [aWindow setReleasedWhenClosed:NO];
+            [wal setReleasedWhenClosed:NO];
             appWindow.size.height = [aWindow frame].size.height;
             appWindow.size.width =[aWindow frame].size.width;
             appWindow.origin.x = [aWindow frame].origin.x;
@@ -1096,7 +1093,6 @@ void ofTextField::create(int x, int y,int w,int h){
     
     
     
-    //  NSLog(@"%@",allWindows);
     
 #endif
     
