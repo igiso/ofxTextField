@@ -955,7 +955,7 @@ void ofTextField::create(int x, int y,int w,int h){
     wchar_t wstr2[16384]= L"EDIT\0";
     
     
-    EnableWindow(WindowFromDC(wglGetCurrentDC()), FALSE);
+
     if(isMultiline)
         hEdit = CreateWindowExW(WS_EX_APPWINDOW, wstr2, convertNarrowToWide(text).c_str(),
                                 WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_MULTILINE |ES_AUTOVSCROLL,
@@ -982,8 +982,8 @@ void ofTextField::create(int x, int y,int w,int h){
     
     bool bFirstEmpty = true;
     DestroyWindow(dialog);
-    EnableWindow(WindowFromDC(wglGetCurrentDC()), TRUE);
-    SetFocus( WindowFromDC(wglGetCurrentDC()));
+
+
 #endif
     
     
