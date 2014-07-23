@@ -1,5 +1,22 @@
-This is work in progress
-What this addon currently does:
+//This is not finished yet
+
+The idea of this addon is to add a textbox class above open gl.
+
+ideally you should subclass this and only create it, or show it when the user is inputing text
+
+
+when user is not inputing text  then hide it and draw in its place a white rect with the text in it.
+
+(a gl renderable  textbox)
+
+ofcourse, you can always use it directly
+
+
+///UPDATE 16/6/2014
+
+Fixed a bug that did not give focus to the main window correctly on PC when clicking outside the textbox and multiple textboxes were available
+
+
 
 UNICODE TEXT INPUT
 DROP DOWN MENUS
