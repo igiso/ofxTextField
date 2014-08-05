@@ -6,6 +6,7 @@
 ///--------------------------------------------------------------------------
 
 
+
 #ifdef TARGET_WIN32
 
 #include <winuser.h>
@@ -16,11 +17,18 @@
 #include <shlobj.h>
 #include <tchar.h>
 #include <stdio.h>
+enum ofTextField_Allingment{
+    ofTextField_Alling_LEFT=0,
+    ofTextField_Alling_RIGHT=2,
+    ofTextField_Alling_CENTER=1
+};
 #endif
-
-
-
 #ifdef TARGET_OSX
+enum ofTextField_Allingment{
+    ofTextField_Alling_LEFT=0,
+    ofTextField_Alling_RIGHT=1,
+    ofTextField_Alling_CENTER=2
+};
 class obj_ofT_;
 extern int quantity_ofBoxes;
 #endif
@@ -33,6 +41,7 @@ class ofTextField{
 #ifdef TARGET_WIN32
     
     HWND hEdit;
+    HWND MainWindow;
     WNDCLASSEXW wc;
 	MSG Msg;
 #endif
@@ -45,20 +54,21 @@ class ofTextField{
     int winPosx,winPosy;
 	int posX,posY,width,height;
 	bool showingScrolBar;
-    bool showScrollBar(bool showing = true);
+    ofTextField_Allingment TextDirection_;
 public:
     bool activeApp();
+    bool isActive();
     ofTextField();
     ~ofTextField();
-    void draw(int x, int y,int w,int h);//use in loop
-    
-    string getText();//use in loop
-    bool setPassWordMode(bool passwrdmd = true);//call in setup() (pc only)
-    bool setMultiline(bool multiln=true);//setup()
-    void hide();//loop
-    void show();//loop
-    bool getIsHiding();//loop
-    void hideIfNotDrawing();//dont' use this yet
-    void setText(string dtext="");//setup or loop
-    void setAllignCenter(bool center=true);//don't use this yet
+    void draw(int x, int y,int w,int h);
+    string getText();
+    bool showScrollBar(bool showing = true);
+    bool setPassWordMode(bool passwrdmd = true);
+    bool setMultiline(bool multiln=true);
+    void hide();
+    void show();
+    bool getIsHiding();
+    void hideIfNotDrawing();
+    void setText(string dtext="");
+    void setTextDir(ofTextField_Allingment direction= ofTextField_Alling_CENTER);
 };

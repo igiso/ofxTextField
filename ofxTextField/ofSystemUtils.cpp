@@ -8,9 +8,6 @@
 
 
 
-
-
-
 #ifdef TARGET_OSX
 
 
@@ -55,21 +52,27 @@ public:
         uiView = uiView_;
         myTextField = myTextField_;
         myTextView = NULL;
-        
-        
     }
-    
+    obj_ofT_( ofNsWindow *wal_,
+             NSView * uiView_,
+             NSSecureTextField *	myPassField_){
+        wal = wal_;
+        uiView = uiView_;
+        myPasswordField = myPassField_;
+        myTextView = NULL;
+    }
     ~obj_ofT_(){
         wal = NULL;
         uiView = NULL;
         myTextView = NULL;
         myTextField=NULL;
+        myPasswordField=NULL;
     }
     ofNsWindow *wal;
     NSView * uiView;
     NSTextView *	myTextView;
     NSTextField*	myTextField;
-    
+    NSSecureTextField* myPasswordField;
     int id;
     
 };
@@ -102,7 +105,6 @@ void ofTextField::create(int x, int y,int w,int h){
     int OF_CENTER_POSY_ = 0;
 	const LPCWSTR g_szClassName = L"myWindowClass\0";
     
-    
     wc.cbSize        = sizeof(WNDCLASSEX);
     wc.style         = CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc   = WndProc;
@@ -130,7 +132,7 @@ void ofTextField::create(int x, int y,int w,int h){
         } else {
 			MessageBoxW(NULL, L"Window Registration Failed!\0", L"Error!\0",
                         MB_ICONEXCLAMATION | MB_OK);
-            
+            //	return text;
 		}
         
         
@@ -156,14 +158,14 @@ void ofTextField::create(int x, int y,int w,int h){
     {
         MessageBoxW(NULL, L"Window Creation Failed!\0", L"Error!\0",
                     MB_ICONEXCLAMATION | MB_OK);
-        
+        //   return text;
     }
     
     
     wchar_t wstr2[16384]= L"EDIT\0";
     
     
-
+    // EnableWindow(WindowFromDC(wglGetCurrentDC()), FALSE);
     if(isMultiline)
         hEdit = CreateWindowExW(WS_EX_APPWINDOW, wstr2, convertNarrowToWide(text).c_str(),
                                 WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_MULTILINE |ES_AUTOVSCROLL,
@@ -176,13 +178,13 @@ void ofTextField::create(int x, int y,int w,int h){
         
         else
             hEdit = CreateWindowExW(WS_EX_APPWINDOW, wstr2, convertNarrowToWide(text).c_str(),
-                                    WS_CHILD | WS_VISIBLE | WS_TABSTOP ,
+                                    WS_CHILD | WS_VISIBLE |ES_AUTOHSCROLL |WS_TABSTOP | int(TextDirection_),
                                     x, y, w, h,WindowFromDC(wglGetCurrentDC()), (HMENU)101, GetModuleHandle(NULL), NULL);
         
         
     }
     
-    SetFocus( hEdit );
+    
     
     ShowWindow(hEdit, SW_SHOWNORMAL);
     if(showingScrolBar&&isMultiline)
@@ -190,8 +192,10 @@ void ofTextField::create(int x, int y,int w,int h){
     
     bool bFirstEmpty = true;
     DestroyWindow(dialog);
-
-
+    //EnableWindow(WindowFromDC(wglGetCurrentDC()), TRUE);
+    // SetFocus(WindowFromDC(wglGetCurrentDC()));
+    MainWindow = ofGetWin32Window();
+    
 #endif
     
     
@@ -201,111 +205,100 @@ void ofTextField::create(int x, int y,int w,int h){
     NSView* uiView;
     NSTextView *	myTextView;
     NSTextField *	myTextField;
+    NSSecureTextField* myPasswordField;
     
     quantity_ofBoxes++;
     NSDictionary *info = [[NSBundle mainBundle] infoDictionary];
-    
     NSString *bundleName = [NSString stringWithFormat:@"%@", [info objectForKey:@"CFBundleExecutable"]];
-    
     standardAppName = [bundleName UTF8String];
-    
     NSRect Srect =    [[NSScreen mainScreen] frame];
-    
-    NSRect rect =    NSMakeRect(x,y,w,h);;
-    
-    
+    NSRect rect =    NSMakeRect(x,y,w,h);
     NSArray * allWindows = [NSApp windows];
-    
-    
-    
-    
     uiView = [[[NSView alloc] initWithFrame:rect]autorelease];
     uiView.wantsLayer = YES;
-    
-    
     wal = [[[ofNsWindow alloc]initWithContentRect:rect
                                         styleMask:NSBorderlessWindowMask
                                           backing:NSBackingStoreBuffered
                                             defer:NO]autorelease];
+    NSTextAlignment Allingment_ = NSTextAlignment(TextDirection_);
     
-    if(isMultiline){
-        
-        myTextView = [[[NSTextView alloc] initWithFrame:rect]autorelease];
-        
-        [myTextView setString:[NSString stringWithCString:text.c_str()
-                                                 encoding:NSUTF8StringEncoding]];
-        
-        [myTextView setEditable: YES];
-        [myTextView setRichText:NO];
-        NSScrollView *scrollview = [[[NSScrollView alloc]
-                                     initWithFrame:rect]autorelease];
-        NSSize contentSize = [scrollview contentSize];
-        
-        [scrollview setBorderType:NSGrooveBorder];
-        
-        [wal fieldEditor:YES forObject:myTextView];
-        [scrollview setDocumentView:myTextView];
-        [scrollview setHasVerticalScroller:YES];
-        [scrollview setHasVerticalRuler:YES];
-        [scrollview setAutohidesScrollers:NO];
-        [scrollview setBorderType:NSBezelBorder];
-        [wal setContentView:scrollview];
-        
+    if(!isPassword){
+        if(isMultiline){
+            myTextView = [[[NSTextView alloc] initWithFrame:rect]autorelease];
+            [myTextView setString:[NSString stringWithCString:text.c_str()
+                                                     encoding:NSUTF8StringEncoding]];
+            [myTextView setEditable: YES];
+            [myTextView setRichText:NO];
+            NSScrollView *scrollview = [[[NSScrollView alloc]
+                                         initWithFrame:rect]autorelease];
+            NSSize contentSize = [scrollview contentSize];
+            [scrollview setBorderType:NSGrooveBorder];
+            [wal fieldEditor:YES forObject:myTextView];
+            [scrollview setDocumentView:myTextView];
+            [scrollview setHasVerticalScroller:YES];
+            [scrollview setHasVerticalRuler:YES];
+            [scrollview setAutohidesScrollers:NO];
+            [scrollview setBorderType:NSBezelBorder];
+            [wal setContentView:scrollview];
+            [wal makeFirstResponder:myTextView];
+        }else{
+            myTextField = [[[NSTextField alloc] initWithFrame:rect]autorelease];
+            [myTextField setStringValue:[NSString stringWithCString:text.c_str()
+                                                           encoding:NSUTF8StringEncoding]];
+            [myTextField setAlignment:Allingment_];
+            [myTextField setBezeled:YES];
+            [myTextField setEditable:YES];
+            [myTextField setEnabled:YES];
+            [wal setContentView:myTextField];
+            [wal makeFirstResponder:myTextField];
+        }
     }else{
-        myTextField = [[[NSTextField alloc] initWithFrame:rect]autorelease];
         
-        [myTextField setStringValue:[NSString stringWithCString:text.c_str()
-                                                       encoding:NSUTF8StringEncoding]];
+        myPasswordField = [[[NSSecureTextField alloc] initWithFrame:rect]autorelease];
+        [myPasswordField setStringValue:[NSString stringWithCString:text.c_str()
+                                                           encoding:NSUTF8StringEncoding]];
         
-        [myTextField setBezeled:YES];
-        [myTextField setEditable:YES];
-        [myTextField setEnabled:YES];
-        [wal setContentView:myTextField];
+        [myPasswordField setAlignment:Allingment_];
+        [myPasswordField setBezeled:YES];
+        [myPasswordField setEditable:YES];
+        [myPasswordField setEnabled:YES];
+        [wal setContentView:myPasswordField];
+        [wal makeFirstResponder:myPasswordField];
         
     }
-    
     
     
     [wal setLevel:NSNormalWindowLevel];
     [wal makeKeyAndOrderFront:wal];
     [wal orderFront:NSApp];
+    NSWindow * aWindow = (NSWindow*)ofGetCocoaWindow();
+    appWindow.size.height = [aWindow frame].size.height;
+    appWindow.size.width =[aWindow frame].size.width;
+    appWindow.origin.x = [aWindow frame].origin.x;
+    appWindow.origin.y =[aWindow frame].origin.y;
+    NSRect rectofT =  NSMakeRect(appWindow.origin.x+x,(appWindow.origin.y+appWindow.size.height-20)-(y+h),w,h);
+    [wal setFrame:rectofT display:YES];
+    [aWindow addChildWindow:wal ordered:NSWindowAbove];
+    pointerToWindow = ofGetCocoaWindow();
     
-    
-    
-    
-    for(NSWindow * aWindow in allWindows)
-    {
-        if([aWindow.miniwindowTitle isEqual: [NSString stringWithCString:standardAppName.c_str()]]){
-            continue;
-        }else{
-            [wal setReleasedWhenClosed:NO];
-            appWindow.size.height = [aWindow frame].size.height;
-            appWindow.size.width =[aWindow frame].size.width;
-            appWindow.origin.x = [aWindow frame].origin.x;
-            appWindow.origin.y =[aWindow frame].origin.y;
-            NSRect rectofT =  NSMakeRect(appWindow.origin.x+x,(appWindow.origin.y+appWindow.size.height-20)-(y+h),w,h);
-            [wal setFrame:rectofT display:YES];
-            [aWindow addChildWindow:wal ordered:NSWindowAbove];
-            pointerToWindow = aWindow;
-        }
-    }
-    
-    
-    
-    if(isMultiline)
-        pointer = new obj_ofT_(wal,uiView,myTextView);
-    else
-        pointer = new obj_ofT_(wal,uiView,myTextField);
+    if(!isPassword){
+        if(isMultiline)
+            pointer = new obj_ofT_(wal,uiView,myTextView);
+        else
+            pointer = new obj_ofT_(wal,uiView,myTextField);
+    }else pointer = new obj_ofT_(wal,uiView,myPasswordField);
     
     
     
     
     
+    //  NSLog(@"%@",allWindows);
     
 #endif
     
 }
 ofTextField::ofTextField(){
+    TextDirection_ = ofTextField_Alling_LEFT;
     isCreated = false;
     posX=0,posY=0,width=0,height=0;
     showingScrolBar=false;
@@ -348,8 +341,9 @@ bool ofTextField::activeApp(){
     NSDictionary *activeApp = [[NSWorkspace sharedWorkspace] activeApplication];
     
     
-    
-    if([(NSString *)[activeApp objectForKey:@"NSApplicationName"]isEqual:[NSString stringWithCString:standardAppName.c_str()]]){
+    //This is the only place we should use Ascii encoding though UTF8 will also work
+    if([(NSString *)[activeApp objectForKey:@"NSApplicationName"]isEqual:
+        [NSString stringWithCString:standardAppName.c_str() encoding:NSASCIIStringEncoding]]){
         
         isactive = true;
         
@@ -374,8 +368,23 @@ bool ofTextField::activeApp(){
     
 }
 
-void ofTextField::draw(int x, int y,int w,int h){
+
+bool ofTextField::isActive(){
+    bool isTextboxActive =false;
+#ifdef TARGET_WIN32
+    TRACKMOUSEEVENT mouseOverTextbox;
+    mouseOverTextbox.cbSize = sizeof(TRACKMOUSEEVENT);
+    mouseOverTextbox.dwFlags = TME_HOVER;
+    mouseOverTextbox.hwndTrack = this->hEdit;
+    return TrackMouseEvent(&mouseOverTextbox);
+#endif
     
+    return isTextboxActive;
+    
+}
+
+
+void ofTextField::draw(int x, int y,int w,int h){
     if(!isCreated){
         create(x,y,w,h);
         isCreated=true;
@@ -390,7 +399,9 @@ void ofTextField::draw(int x, int y,int w,int h){
         
         if(x!=posX||y!=posY||w!=width||h!=height||rePosisionTheTextBox){
 #ifdef TARGET_WIN32
-            SetWindowPos( hEdit, 0,  x, y, w, h, SWP_NOZORDER  );
+            SetWindowPos(hEdit, 0,  x, y, w, h, SWP_NOZORDER);
+            if(isActive())SetFocus(hEdit); else SetFocus(MainWindow);
+            
 #endif
             
 #ifdef TARGET_OSX
@@ -428,12 +439,12 @@ string ofTextField::getText(){
         text = mbstr2;
 #endif
 #ifdef TARGET_OSX
-        
-        if (!isMultiline)
-            text = [[pointer->myTextField stringValue] UTF8String];
-        else
-            text = [[pointer->myTextView string] UTF8String];
-        
+        if(!isPassword){
+            if (!isMultiline)
+                text = [[pointer->myTextField stringValue] UTF8String];
+            else
+                text = [[pointer->myTextView string] UTF8String];
+        }else text = [[pointer->myPasswordField stringValue]UTF8String];
 #endif
     }
     return text;
@@ -513,14 +524,12 @@ void ofTextField::show()
     
     
 }
-
 bool ofTextField::setPassWordMode(bool passwrdmd ){
     
     isPassword= passwrdmd;
     
     return isPassword;
 }
-
 void ofTextField::setText(string dtext){
     if(isCreated){
 #ifdef TARGET_WIN32
@@ -546,7 +555,11 @@ void ofTextField::setText(string dtext){
     
     
 }
-
+void ofTextField::setTextDir(ofTextField_Allingment direction){
+    if(!isCreated){
+        TextDirection_ = direction;
+    }else cout<<"ofTField::Allingment Should Be called on Setup"<<endl;
+}
 
 ///this is the weird part of the code
 //since this textbox is drawing above openGL
@@ -569,6 +582,9 @@ void ofTextField::hideIfNotDrawing(){
     
     
 }
+
+
+
 
 
 
