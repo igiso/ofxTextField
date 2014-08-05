@@ -2,7 +2,7 @@
 
 
 Fixed a bug that caused crash on exit under mac
-Adde password MODE!!
+Added password MODE!!
 
 to do:
 
@@ -17,13 +17,14 @@ When pressing Tab change focus between textboxes
 
 
 
-//This is not finished yet!!! I update this constantly please visit to get updated version and open issues if you find any!!!
+//This is not finished yet!!! I update this constantly please re-visit 
+and PLEASE DO open issues if you find any!!!
 
 
 What is this addon?
 
 
-This is a TEXTBOX for openFrameworks
+This is a TEXTBOX for openFrameworks that supports all languages.
 
 
 What's the difference from other textboxes outthere?
@@ -40,11 +41,13 @@ when user is not inputing text  then hide it and draw in its place a white rect 
 
 ofcourse, you can always use it directly!!!
 
-by doing:
+by just doing:
 
 textbox.draw(x,y,100,20);
 
 
+
+just keep in mind that this is attached above your gl-window
 
 
 
