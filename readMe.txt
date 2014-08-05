@@ -1,15 +1,51 @@
-//This is not finished yet
+//UPDATE AUG/5/2014
 
-The idea of this addon is to add a textbox class above open gl.
+
+Fixed a bug that caused crash on exit under mac
+Adde password MODE!!
+
+to do:
+
+
+When pressing Tab change focus between textboxes
+
+
+
+
+
+
+
+
+
+//This is not finished yet!!! I update this constantly please visit to get updated version and open issues if you find any!!!
+
+
+What is this addon?
+
+
+This is a TEXTBOX for openFrameworks
+
+
+What's the difference from other textboxes outthere?
+
+It's not a fake textbox. ..it's the real deal
+
+
 
 ideally you should subclass this and only create it, or show it when the user is inputing text
-
-
 when user is not inputing text  then hide it and draw in its place a white rect with the text in it.
-
 (a gl renderable  textbox)
 
-ofcourse, you can always use it directly
+
+
+ofcourse, you can always use it directly!!!
+
+by doing:
+
+textbox.draw(x,y,100,20);
+
+
+
 
 
 ///UPDATE 16/6/2014
