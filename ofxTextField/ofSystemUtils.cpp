@@ -325,9 +325,9 @@ ofTextField::  ~ofTextField(){
 #endif
 #ifdef TARGET_OSX
         NSWindow * aWindow = (NSWindow *)pointerToWindow;
-        
-        
-        [aWindow removeChildWindow:pointer->wal];
+        if ([[NSApp windows]count]>1){
+            [aWindow removeChildWindow:pointer->wal];
+        }
         
         delete pointer;
         pointerToWindow =NULL;
